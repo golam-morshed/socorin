@@ -20,6 +20,7 @@
     "test:rust": "cargo test --manifest-path src-tauri/Cargo.toml --lib",
     "test:rust:coverage": "cargo llvm-cov --manifest-path src-tauri/Cargo.toml --lib --ignore-filename-regex test_support --fail-under-lines 75",
     "test:all": "npm run test:coverage && npm run test:rust:coverage",
+    "install:app": "./scripts/install-dev-app.sh",
     "tauri": "tauri"
   },
   "dependencies": {

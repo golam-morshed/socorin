@@ -24,11 +24,19 @@ cd "$(dirname "$0")/.."
 TARGET_DIR="${CARGO_TARGET_DIR:-src-tauri/target}"
 [ -d "$TARGET_DIR" ] || exit 0
 
+LSREGISTER="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
+
 find "$TARGET_DIR" -maxdepth 5 -type d -path "*/bundle/macos/*.app" -prune -print0 |
   while IFS= read -r -d '' app; do
     dest="$(dirname "$(dirname "$app")")/macos.noindex"
     mkdir -p "$dest"
     rm -rf "${dest:?}/$(basename "$app")"
+    if [ -x "$LSREGISTER" ]; then
+      "$LSREGISTER" -u "$app" 2>/dev/null || true
+    fi
     mv "$app" "$dest/"
+    if [ -x "$LSREGISTER" ]; then
+      "$LSREGISTER" -u "$dest/$(basename "$app")" 2>/dev/null || true
+    fi
     echo "hidden from Spotlight: $dest/$(basename "$app")"
   done
