@@ -119,6 +119,7 @@ export interface Settings {
   lastVersion: string;
   /** Where "Upload & copy link" sends captures: an http(s) origin, socorin.com by default. */
   uploadServer: string;
+  uploadDestination: "socorinCloud" | "googleDrive";
   /** The random id the share server gave this install ("" until the first upload). */
   installId: string;
 }
@@ -159,6 +160,7 @@ export interface ShareError {
 /** What the "Link copied" popover shows (`share_notice`, event `share:notice`). */
 export type ShareNotice =
   | { kind: "shared"; link: SharedLink; retentionDays: number }
+  | { kind: "driveShared"; url: string }
   | { kind: "failed"; error: ShareError };
 
 /**
@@ -226,6 +228,9 @@ export interface DebugOptions {
 }
 
 export const ipc = {
+  driveConnect: () => invoke<void>("drive_connect"),
+  driveConnected: () => invoke<boolean>("drive_connected"),
+  driveDisconnect: () => invoke<void>("drive_disconnect"),
   debugOptions: () => invoke<DebugOptions>("debug_options"),
   /** Appends to the Rust diagnostics log (no-op unless SOCORIN_DEBUG is set). */
   debugLog: (message: string) => invoke<void>("debug_log", { message }),
@@ -302,6 +307,13 @@ export const ipc = {
    */
   uploadPng: (png: Uint8Array, anchor?: Anchor) =>
     invoke<SharedLink>("upload_png", png, anchor && { headers: { "x-socorin-anchor": JSON.stringify(anchor) } }),
+  /**
+   * Uploads PNG bytes directly to the configured Google Drive folder,
+   * copies the sharable link to the clipboard and shows the Drive popover.
+   * Rejects with a `ShareError` (e.g. if Drive is not connected).
+   */
+  uploadPngToDrive: (png: Uint8Array, anchor?: Anchor) =>
+    invoke<string>("upload_png_to_drive", png, anchor && { headers: { "x-socorin-anchor": JSON.stringify(anchor) } }),
   /** The remembered links, newest first. */
   shareHistory: () => invoke<SharedLink[]>("share_history"),
   /** "Delete from server" for a remembered link. Rejects with a `ShareError`. */

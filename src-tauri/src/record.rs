@@ -569,6 +569,16 @@ fn upload_recording<R: Runtime>(app: &AppHandle<R>, path: PathBuf) -> (PathBuf, 
         return (path.clone(), Err(share::ShareError::new("unsupported_type", MOV_HELP)));
     };
     let name = path.file_name().map(|n| n.to_string_lossy().into_owned());
+    if settings::current(app).upload_destination == settings::UploadDestination::GoogleDrive {
+        let size = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
+        if size > share::CLIENT_MAX_FILE { return (path, Err(share::ShareError::new("file_too_large", "Google Drive upload is limited to 25 MB per file."))); }
+        let result = tauri::async_runtime::block_on(async {
+            let bytes = std::fs::read(&path).map_err(|e| share::ShareError::new("io", format!("cannot read recording: {e}")))?;
+            let link = crate::drive::upload(app, bytes, name.as_deref().unwrap_or("recording.mp4"), mime).await.map_err(|e| share::ShareError::new("google_drive", e))?;
+            Ok(share::SharedLink { id: "drive:uploaded".into(), share_url: link, delete_token: String::new(), expires_at: String::new(), kind: share::Kind::Video, mime: mime.into(), size, created_at: 0 })
+        });
+        return (path, result);
+    }
     let result = tauri::async_runtime::block_on(async {
         let limits = share::limits(app).await?;
         let size = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);

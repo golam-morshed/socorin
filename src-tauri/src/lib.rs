@@ -4,6 +4,7 @@ mod clipboard;
 mod commands;
 mod cursor;
 mod debug;
+mod drive;
 mod hotkey;
 #[cfg(target_os = "macos")]
 mod macos;
@@ -148,6 +149,7 @@ pub(crate) fn configure<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tauri:
             commands::dismiss_update,
             commands::update_ready,
             commands::upload_png,
+            commands::upload_png_to_drive,
             commands::share_history,
             commands::delete_share,
             commands::copy_share_link,
@@ -157,6 +159,9 @@ pub(crate) fn configure<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tauri:
             commands::share_engaged,
             commands::dismiss_share,
             commands::quit,
+            drive::drive_connect,
+            drive::drive_connected,
+            drive::drive_disconnect,
         ])
 }
 

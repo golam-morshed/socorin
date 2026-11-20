@@ -1,0 +1,9 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Socorin Dev",
+  "identifier": "com.socorin.dev",
+  "bundle": {
+    "createUpdaterArtifacts": false,
+    "targets": ["app"]
+  }
+}

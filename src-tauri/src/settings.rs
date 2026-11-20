@@ -18,6 +18,14 @@ pub enum AfterCapture {
     Upload,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "camelCase")]
+pub enum UploadDestination {
+    #[default]
+    SocorinCloud,
+    GoogleDrive,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Settings {
@@ -85,6 +93,8 @@ pub struct Settings {
     /// there are no accounts). Empty until the first upload registers one;
     /// "Reset install ID" in Settings empties it again.
     pub install_id: String,
+    /// Where manual and automatic uploads go. Cloud remains the default.
+    pub upload_destination: UploadDestination,
 }
 
 impl Default for Settings {
@@ -113,6 +123,7 @@ impl Default for Settings {
             last_version: String::new(),
             upload_server: DEFAULT_UPLOAD_SERVER.into(),
             install_id: String::new(),
+            upload_destination: UploadDestination::SocorinCloud,
         }
     }
 }
@@ -536,6 +547,7 @@ mod app_tests {
     #[test]
     fn sharing_defaults_to_socorin_com_and_no_install_id() {
         let d = Settings::default();
+        assert_eq!(d.upload_destination, UploadDestination::SocorinCloud);
         assert_eq!(d.upload_server, DEFAULT_UPLOAD_SERVER);
         assert_eq!(d.install_id, "");
         let json = serde_json::to_value(&d).unwrap();

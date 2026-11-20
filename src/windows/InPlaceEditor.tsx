@@ -161,6 +161,18 @@ export function InPlaceEditor({ source, crop, scale, hidden, onLockChange, setti
       }),
     [run, renderPng, notify, box.left, box.top, box.width, box.height],
   );
+  // Upload directly to Google Drive folder, always.
+  const uploadToDrive = useCallback(
+    (anchor?: Anchor) =>
+      run(async () => {
+        const png = await renderPng();
+        notify("Uploading to Drive…", true);
+        await ipc.uploadPngToDrive(png, anchor ?? { x: box.left, y: box.top, width: box.width, height: box.height });
+        setToast(null);
+        await ipc.endCapture();
+      }),
+    [run, renderPng, notify, box.left, box.top, box.width, box.height],
+  );
   const close = useCallback(() => void ipc.endCapture(), []);
 
   const actions = useRef({ copy, save });
@@ -237,6 +249,7 @@ export function InPlaceEditor({ source, crop, scale, hidden, onLockChange, setti
           canRedo={a.history.canRedo}
           hasSelection={!!a.selectedId}
           busy={busy}
+          uploadDestination={settings?.uploadDestination}
           onTool={a.setTool}
           onColor={a.setColor}
           onStroke={a.setStrokeLevel}
@@ -248,6 +261,7 @@ export function InPlaceEditor({ source, crop, scale, hidden, onLockChange, setti
           onSave={save}
           onSaveAs={saveAs}
           onUpload={upload}
+          onUploadToDrive={uploadToDrive}
           onClose={close}
         />
         {toast && <div className={`inplace-toast ${toast.info ? "info" : ""}`}>{toast.text}</div>}

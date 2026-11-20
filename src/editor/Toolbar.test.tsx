@@ -112,6 +112,23 @@ describe("Toolbar (editor window)", () => {
     const down = fireEvent.mouseDown(container.querySelector(".toolbar")!);
     expect(down).toBe(false); // default prevented
   });
+
+  it("names Google Drive as the upload destination when selected", () => {
+    renderToolbar({ uploadDestination: "googleDrive" });
+    const button = screen.getByRole("button", { name: /Upload to Google Drive/ });
+    expect(button.textContent).toContain("Upload to Google Drive");
+    expect(button.getAttribute("title")).toBe("Upload to Google Drive (Ctrl/⌘+Shift+U)");
+  });
+
+  it("renders a separate Drive button alongside Upload when onUploadToDrive is provided", () => {
+    const onUploadToDrive = vi.fn();
+    renderToolbar({ onUploadToDrive });
+    const driveButton = screen.getByRole("button", { name: /^Drive$/ });
+    expect(driveButton).toBeTruthy();
+    expect(driveButton.getAttribute("title")).toBe("Upload to Google Drive & copy link");
+    fireEvent.click(driveButton);
+    expect(onUploadToDrive).toHaveBeenCalled();
+  });
 });
 
 describe("Toolbar (floating, in-place)", () => {

@@ -47,13 +47,15 @@ chrono = "0.4.45"
 tauri-plugin-updater = "2"
 semver = "1"
 url = "2"
-reqwest = { version = "0.13", default-features = false, features = ["json", "rustls-no-provider", "system-proxy"] }
+reqwest = { version = "0.13", default-features = false, features = ["json", "form", "rustls-no-provider", "system-proxy"] }
 rustls = { version = "0.23", default-features = false, features = ["ring"] }
 # Sharing a capture on socorin.com (share.rs): the upload is checksummed
 # with SHA-256 and the chunk retries wait on the async runtime's clock
 # (tokio is what tauri's runtime is; only its timer is used directly).
 sha2 = "0.10"
-tokio = { version = "1", default-features = false, features = ["time"] }
+tokio = { version = "1", default-features = false, features = ["time", "rt"] }
+base64 = "0.23.1"
+uuid = { version = "1.29.2", features = ["v4"] }
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
@@ -68,12 +70,14 @@ strip = true
 objc2 = "0.6.4"
 # The completion block of AVCaptureDevice's microphone permission request.
 block2 = "0.6"
+keyring = { version = "3", features = ["apple-native"] }
 
 [target.'cfg(unix)'.dependencies]
 # SIGINT to the recording encoder so it finalises the file.
 libc = "0.2"
 
 [target.'cfg(target_os = "windows")'.dependencies]
+keyring = { version = "3", features = ["windows-native"] }
 # CF_HDROP clipboard (copying a recording as a file).
 windows-sys = { version = "0.61", features = [
     "Win32_Foundation",
@@ -101,6 +105,7 @@ windows = { version = "0.62", features = [
 ] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
+keyring = { version = "3", features = ["linux-native-sync-persistent", "crypto-rust"] }
 # Same gtk Tauri links; the file clipboard (text/uri-list) goes through it.
 gtk = "0.18"
 

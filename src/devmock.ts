@@ -30,6 +30,7 @@ let settings = {
   lastVersion: "1.0.2",
   uploadServer: "https://socorin.com",
   installId: "mockInstallId0123456789",
+  uploadDestination: "socorinCloud",
 };
 
 // `?mock=share&state=failed` shows the popover's failure look.
@@ -202,6 +203,11 @@ const handlers: Record<string, Handler> = {
     await new Promise((r) => setTimeout(r, 1200));
     // No delete token: it never leaves the Rust side (deleting goes by id).
     return mockLinks[0];
+  },
+  upload_png_to_drive: async (args) => {
+    console.log("[mock] upload_png_to_drive", (args as ArrayBuffer).byteLength, "bytes");
+    await new Promise((r) => setTimeout(r, 1200));
+    return "https://drive.google.com/file/d/mock-file-id/view";
   },
   share_history: async () => mockLinks,
   delete_share: async (args) => {

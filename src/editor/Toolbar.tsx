@@ -60,6 +60,8 @@ interface Props {
   canRedo: boolean;
   hasSelection: boolean;
   busy: boolean;
+  /** Destination selected in Settings. */
+  uploadDestination?: "socorinCloud" | "googleDrive";
   onTool: (t: ToolId | null) => void;
   onColor: (c: string) => void;
   onStroke: (level: number) => void;
@@ -69,8 +71,10 @@ interface Props {
   onCopy: () => void;
   onSave: () => void;
   onSaveAs: () => void;
-  /** "Upload & copy link": the PNG goes to the share server; `anchor` is the button, for the popover. */
+  /** Upload the PNG to the selected destination; `anchor` positions the result popover. */
   onUpload: (anchor?: Anchor) => void;
+  /** Upload directly to Google Drive (always, regardless of destination setting). */
+  onUploadToDrive?: (anchor?: Anchor) => void;
   onClose: () => void;
   /** Floating variant (in-place editor): no zoom controls, tools toggle off. */
   floating?: boolean;
@@ -82,6 +86,9 @@ interface Props {
 }
 
 export function Toolbar(p: Props) {
+  const driveUpload = p.uploadDestination === "googleDrive";
+  const uploadLabel = driveUpload ? "Upload to Google Drive" : "Upload";
+  const uploadTitle = `${driveUpload ? "Upload to Google Drive" : "Upload & copy link"} (Ctrl/⌘+Shift+U)`;
   const tools = TOOLS.map(({ id, label, key, Icon }) => (
     <button
       key={id}
@@ -175,9 +182,14 @@ export function Toolbar(p: Props) {
       <button type="button" className="tool-btn wide" title="Save as… (Ctrl/⌘+Shift+S)" disabled={p.busy} onClick={p.onSaveAs}>
         <FolderDown size={16} /> Save as
       </button>
-      <button type="button" className="tool-btn wide" title="Upload & copy link (Ctrl/⌘+Shift+U)" disabled={p.busy} onClick={(e) => p.onUpload(anchorOf(e.currentTarget))}>
-        <CloudUpload size={16} /> Upload
+      <button type="button" className="tool-btn wide" title={uploadTitle} disabled={p.busy} onClick={(e) => p.onUpload(anchorOf(e.currentTarget))}>
+        <CloudUpload size={16} /> {uploadLabel}
       </button>
+      {p.onUploadToDrive && (
+        <button type="button" className="tool-btn wide" title="Upload to Google Drive & copy link" disabled={p.busy} onClick={(e) => p.onUploadToDrive!(anchorOf(e.currentTarget))}>
+          <CloudUpload size={16} /> Drive
+        </button>
+      )}
       <button
         type="button"
         className="tool-btn wide primary"

@@ -182,6 +182,18 @@ export function Editor() {
     [run, a.renderPng, notify],
   );
 
+  // Upload directly to Google Drive — always targets the Drive folder, regardless of settings.
+  const uploadToDrive = useCallback(
+    (anchor?: Anchor) =>
+      run(async () => {
+        const png = await a.renderPng();
+        notify("Uploading to Drive…");
+        await ipc.uploadPngToDrive(png, anchor);
+        notify("Drive link copied");
+      }),
+    [run, a.renderPng, notify],
+  );
+
   actionsRef.current = { copy, quickSave };
 
   const close = useCallback(() => void getCurrentWindow().close(), []);
@@ -269,6 +281,7 @@ export function Editor() {
         canRedo={a.history.canRedo}
         hasSelection={!!a.selectedId}
         busy={busy}
+        uploadDestination={settings?.uploadDestination}
         onTool={(t) => a.setTool(t ?? "select")}
         onColor={a.setColor}
         onStroke={a.setStrokeLevel}
@@ -281,6 +294,7 @@ export function Editor() {
         onSave={quickSave}
         onSaveAs={saveAs}
         onUpload={upload}
+        onUploadToDrive={uploadToDrive}
         onClose={close}
       />
 

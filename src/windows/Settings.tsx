@@ -105,6 +105,8 @@ export function Settings() {
   const [links, setLinks] = useState<SharedLink[]>([]);
   const [busyLink, setBusyLink] = useState<string | null>(null);
   const [mics, setMics] = useState<AudioInput[]>([]);
+  const [driveConnected, setDriveConnected] = useState(false);
+  const [driveBusy, setDriveBusy] = useState(false);
   const statusTimer = useRef<number | undefined>(undefined);
   const dirtyRef = useRef(false);
   dirtyRef.current = dirty;
@@ -138,6 +140,7 @@ export function Settings() {
     refreshPlatform();
     refreshLinks();
     refreshMics();
+    ipc.driveConnected().then(setDriveConnected).catch(() => {});
     ipc.updateStatus().then(setUpdateInfo).catch(() => {});
     const unlisten = [
       listen("screen-permission-missing", () => {
@@ -197,6 +200,7 @@ export function Settings() {
         checkUpdates,
         autoUpdate,
         uploadServer,
+        uploadDestination,
       } = settings;
       const saved = await ipc.updateSettings({
         hotkey,
@@ -215,6 +219,7 @@ export function Settings() {
         checkUpdates,
         autoUpdate,
         uploadServer,
+        uploadDestination,
       });
       setSettings(saved);
       setDirty(false);
@@ -518,7 +523,22 @@ export function Settings() {
       <section className="card">
         <h2>Share</h2>
         <label className="field">
-          <span>Upload server</span>
+          <span>Upload destination</span>
+          <select value={settings.uploadDestination} onChange={(e) => update({ uploadDestination: e.target.value as SettingsModel["uploadDestination"] })}>
+            <option value="socorinCloud">Socorin Cloud (default)</option>
+            <option value="googleDrive">Google Drive</option>
+          </select>
+        </label>
+        <div className="row">
+          {driveConnected ? (
+            <button type="button" className="ghost" disabled={driveBusy} onClick={async () => { setDriveBusy(true); try { await ipc.driveDisconnect(); setDriveConnected(false); flash({ kind: "ok", text: "Google Drive disconnected" }); } catch (e) { flash({ kind: "error", text: String(e) }); } finally { setDriveBusy(false); } }}>Disconnect Google Drive</button>
+          ) : (
+            <button type="button" className="secondary" disabled={driveBusy} onClick={async () => { setDriveBusy(true); try { await ipc.driveConnect(); setDriveConnected(await ipc.driveConnected()); flash({ kind: "ok", text: "Google Drive connected" }); } catch (e) { flash({ kind: "error", text: String(e), }); } finally { setDriveBusy(false); } }}>{driveBusy ? "Connecting…" : "Connect Google Drive"}</button>
+          )}
+        </div>
+        <p className="hint">Google Drive uploads use OAuth with PKCE. Socorin stores the refresh token in macOS Keychain. Files are shared as anyone with the link can view, and remain in your Drive until you delete them there.</p>
+        <label className="field">
+          <span>Socorin Cloud upload server</span>
           <input
             value={settings.uploadServer}
             onChange={(e) => update({ uploadServer: e.target.value })}
@@ -540,9 +560,9 @@ export function Settings() {
           15 MB per file on socorin.com) and answers with a link that goes to the clipboard. Nothing is uploaded unless
           you ask. The install ID is a random token the server hands out to hold off spam; there are no accounts.
         </p>
-        <h3>Shared links</h3>
+        <h3>Socorin Cloud links</h3>
         {links.length === 0 ? (
-          <p className="hint">No links yet. Links you make appear here so you can copy them again or delete the file.</p>
+          <p className="hint">No links yet. Cloud links appear here for copying or deletion. Google Drive files remain in your Drive and are not listed here.</p>
         ) : (
           <ul className="share-list">
             {links.map((link) => (

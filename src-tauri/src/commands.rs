@@ -11,6 +11,7 @@ use crate::{
     audio,
     capture::{self, AppState, MonitorInfo, Region},
     debug,
+    drive,
     hotkey,
     record,
     settings::{self, Settings},
@@ -508,6 +509,40 @@ pub async fn upload_png<R: Runtime>(
 ) -> Result<share::PublicLink, share::ShareError> {
     let png = raw_body(&request).map_err(|e| share::ShareError::new("invalid_request", e))?;
     share::share_png(&app, png, anchor_header(&window, &request)).await
+}
+
+/// Body: PNG bytes → uploads directly to the configured Google Drive folder,
+/// copies the sharable link to the clipboard, and shows the share popover.
+/// Returns the Drive link URL, or a `ShareError` on failure.
+#[tauri::command]
+pub async fn upload_png_to_drive<R: Runtime>(
+    app: AppHandle<R>,
+    window: tauri::Window<R>,
+    request: Request<'_>,
+) -> Result<String, share::ShareError> {
+    let png = raw_body(&request).map_err(|e| share::ShareError::new("invalid_request", e))?;
+    let settings = settings::current(&app);
+    let name = format!("{}_{}.png", settings.file_prefix, crate::capture::time_stamp());
+    let url = drive::upload(&app, png, &name, "image/png")
+        .await
+        .map_err(|e| share::ShareError::new("google_drive", e))?;
+    let anchor = anchor_header(&window, &request);
+    // announce() copies the link to clipboard and shows the Drive share popover.
+    let _ = share::announce(
+        &app,
+        Ok(share::SharedLink {
+            id: "drive:uploaded".into(),
+            share_url: url.clone(),
+            delete_token: String::new(),
+            expires_at: String::new(),
+            kind: share::Kind::Image,
+            mime: "image/png".into(),
+            size: 0,
+            created_at: share::now_secs(),
+        }),
+        anchor,
+    );
+    Ok(url)
 }
 
 /// The remembered links, newest first (without their delete tokens). The

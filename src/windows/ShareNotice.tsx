@@ -130,6 +130,15 @@ export function ShareNotice() {
         </div>
       </>
     );
+  } else if (notice.kind === "driveShared") {
+    body = (
+      <>
+        <h1>Google Drive link copied</h1>
+        <code className="share-link" title={notice.url}>{notice.url}</code>
+        <p className="share-warning">Anyone with the link can view this file. It remains in your Google Drive until you remove it there.</p>
+        <div className="row"><button type="button" className="secondary" onClick={dismiss}>Close</button></div>
+      </>
+    );
   } else {
     const { link, retentionDays } = notice;
     body = (

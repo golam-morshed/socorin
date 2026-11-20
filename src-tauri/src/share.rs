@@ -260,6 +260,7 @@ impl std::fmt::Display for ShareError {
 #[serde(rename_all = "camelCase", rename_all_fields = "camelCase", tag = "kind")]
 pub enum Notice {
     Shared { link: PublicLink, retention_days: u32 },
+    DriveShared { url: String },
     Failed { error: ShareError },
 }
 
@@ -992,6 +993,12 @@ pub fn copy_text<R: Runtime>(app: &AppHandle<R>, text: &str) -> Result<(), Strin
 /// stays on the Rust side (deleting goes by id, `delete_share`).
 pub async fn share_png<R: Runtime>(app: &AppHandle<R>, png: Vec<u8>, anchor: Option<Anchor>) -> Result<PublicLink, ShareError> {
     let name = format!("{}_{}.png", settings::current(app).file_prefix, crate::capture::time_stamp());
+    if settings::current(app).upload_destination == settings::UploadDestination::GoogleDrive {
+        if png.len() as u64 > CLIENT_MAX_FILE { return Err(ShareError::new("file_too_large", "Google Drive upload is limited to 25 MB per file.")); }
+        let url = crate::drive::upload(app, png.clone(), &name, "image/png").await.map_err(|e| ShareError::new("google_drive", e))?;
+        let link = SharedLink { id: "drive:uploaded".into(), share_url: url, delete_token: String::new(), expires_at: String::new(), kind: Kind::Image, mime: "image/png".into(), size: png.len() as u64, created_at: 0 };
+        return announce(app, Ok(link), anchor);
+    }
     let outcome = upload(app, png, Kind::Image, "image/png", Some(name)).await;
     announce(app, outcome, anchor)
 }
@@ -1018,7 +1025,8 @@ pub fn announce<R: Runtime>(
                 .as_ref()
                 .map(|(_, l)| l.retention_days)
                 .unwrap_or(0);
-            Notice::Shared { link: link.public(), retention_days }
+            if link.id.starts_with("drive:") { Notice::DriveShared { url: link.share_url.clone() } }
+            else { Notice::Shared { link: link.public(), retention_days } }
         }
         Err(e) => {
             eprintln!("[share] {}: {}", e.code, e.message);
@@ -1388,7 +1396,7 @@ pub(crate) mod tests {
                             "id": MEDIA_ID,
                             "shareUrl": self.share_url(),
                             "deleteToken": "del-".to_string() + &"x".repeat(39),
-                            "expiresAt": "2026-11-17T00:00:00Z",
+                            "expiresAt": "2029-11-17T00:00:00Z",
                             "kind": "image",
                             "mime": "image/png",
                             "size": all.len()
