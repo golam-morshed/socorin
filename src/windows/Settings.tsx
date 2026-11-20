@@ -534,9 +534,48 @@ export function Settings() {
             {driveConnected ? "✓ Connected" : "○ Not authorized yet"}
           </span>
           {driveConnected ? (
-            <button type="button" className="ghost" disabled={driveBusy} onClick={async () => { setDriveBusy(true); try { await ipc.driveDisconnect(); setDriveConnected(false); flash({ kind: "ok", text: "Google Drive disconnected" }); } catch (e) { flash({ kind: "error", text: String(e) }); } finally { setDriveBusy(false); } }}>Disconnect Google Drive</button>
+            <button
+              type="button"
+              className="ghost"
+              disabled={driveBusy}
+              onClick={async () => {
+                setDriveBusy(true);
+                try {
+                  await ipc.driveDisconnect();
+                  setDriveConnected(false);
+                  flash({ kind: "ok", text: "Google Drive disconnected" });
+                } catch (e) {
+                  flash({ kind: "error", text: String(e) }, 8000);
+                } finally {
+                  setDriveBusy(false);
+                }
+              }}
+            >
+              Disconnect Google Drive
+            </button>
           ) : (
-            <button type="button" className="secondary" disabled={driveBusy} onClick={async () => { setDriveBusy(true); try { await ipc.driveConnect(); setDriveConnected(await ipc.driveConnected()); flash({ kind: "ok", text: "Google Drive connected" }); } catch (e) { flash({ kind: "error", text: String(e), }); } finally { setDriveBusy(false); } }}>{driveBusy ? "Connecting…" : "Connect Google Drive"}</button>
+            <button
+              type="button"
+              className="secondary"
+              disabled={driveBusy}
+              onClick={async () => {
+                setDriveBusy(true);
+                try {
+                  await ipc.driveConnect();
+                  const connected = await ipc.driveConnected();
+                  setDriveConnected(connected);
+                  if (connected) {
+                    flash({ kind: "ok", text: "Google Drive connected" });
+                  }
+                } catch (e) {
+                  flash({ kind: "error", text: String(e) }, 8000);
+                } finally {
+                  setDriveBusy(false);
+                }
+              }}
+            >
+              {driveBusy ? "Connecting…" : "Connect Google Drive"}
+            </button>
           )}
         </div>
         <p className="hint">Google Drive uploads use OAuth with PKCE. Socorin stores the refresh token in macOS Keychain. Files are shared as anyone with the link can view, and remain in your Drive until you delete them there.</p>

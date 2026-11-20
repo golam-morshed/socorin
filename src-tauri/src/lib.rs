@@ -27,6 +27,7 @@ use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    update::ensure_crypto_provider();
     let builder = tauri::Builder::default()
         // Must be the first plugin so a second launch is intercepted early.
         .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
@@ -92,6 +93,7 @@ pub fn run() {
 /// plugins, the shared state, the window-close policy and the commands. The
 /// unit tests build the same thing on Tauri's mock runtime.
 pub(crate) fn configure<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
+    update::ensure_crypto_provider();
     builder
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())

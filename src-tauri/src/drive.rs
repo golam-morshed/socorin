@@ -14,6 +14,12 @@ const CLIENT_ID: &str = "59686342197-5a58rrnmoafohg1dn7voj7is5ssfu3ec.apps.googl
 const SCOPE: &str = "https://www.googleapis.com/auth/drive.file";
 /// The specific Google Drive folder where screenshots are uploaded.
 const FOLDER_ID: &str = "1CTZOgxCOkMxwwvo-Jqb5TEh3NxTl8IJi";
+
+fn client() -> reqwest::Client {
+    crate::update::ensure_crypto_provider();
+    reqwest::Client::new()
+}
+
 fn entry<R: Runtime>(app: &AppHandle<R>) -> Result<keyring::Entry, String> {
     let service = format!("{}.google-drive", app.config().identifier);
     keyring::Entry::new(&service, "refresh-token").map_err(|e| e.to_string())
@@ -56,7 +62,7 @@ pub async fn drive_disconnect<R: Runtime>(app: AppHandle<R>) -> Result<(), Strin
     if let Some(token) = token {
         // Local disconnect takes effect even when offline; revoke remotely
         // on a best-effort basis after removing the credential locally.
-        let _ = reqwest::Client::new()
+        let _ = client()
             .post("https://oauth2.googleapis.com/revoke")
             .form(&[("token", token)])
             .send()
@@ -122,7 +128,14 @@ pub async fn drive_connect<R: Runtime>(app: AppHandle<R>) -> Result<(), String> 
         let cb = url::Url::parse(&format!("http://127.0.0.1:{port}{target}"))
             .map_err(|e| e.to_string())?;
         let p: std::collections::HashMap<_, _> = cb.query_pairs().into_owned().collect();
-        let _=stream.write_all(b"HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nConnection: close\r\n\r\nGoogle Drive connected. You may close this tab.");
+        let html = "<!DOCTYPE html><html><body style=\"font-family:system-ui,-apple-system,sans-serif;text-align:center;padding:60px 20px;background:#1c1c1e;color:#f2f2f7;\"><h2 style=\"color:#30d158;\">&#10003; Google Drive Connected</h2><p>You can close this tab and return to Socorin.</p></body></html>";
+        let resp = format!(
+            "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+            html.len(),
+            html
+        );
+        let _ = stream.write_all(resp.as_bytes());
+        let _ = stream.flush();
         if p.get("state") != Some(&state) {
             return Err("Google OAuth state validation failed".into());
         }
@@ -135,7 +148,7 @@ pub async fn drive_connect<R: Runtime>(app: AppHandle<R>) -> Result<(), String> 
     });
     tauri_plugin_opener::open_url(&auth_url, None::<&str>).map_err(|e| e.to_string())?;
     let code = callback.await.map_err(|e| e.to_string())??;
-    let response: Token = reqwest::Client::new()
+    let response: Token = client()
         .post("https://oauth2.googleapis.com/token")
         .form(&[
             ("client_id", CLIENT_ID),
@@ -156,6 +169,7 @@ pub async fn drive_connect<R: Runtime>(app: AppHandle<R>) -> Result<(), String> 
     entry(&app)?
         .set_password(&refresh)
         .map_err(|e| format!("Could not save refresh token to macOS Keychain: {e}"))?;
+    crate::windows::show_settings(&app);
     Ok(())
 }
 
@@ -163,7 +177,7 @@ async fn access_token<R: Runtime>(app: &AppHandle<R>) -> Result<String, String> 
     let refresh = entry(app)?
         .get_password()
         .map_err(|_| "Connect Google Drive in Socorin Settings first".to_string())?;
-    let t: Token = reqwest::Client::new()
+    let t: Token = client()
         .post("https://oauth2.googleapis.com/token")
         .form(&[
             ("client_id", CLIENT_ID),
@@ -194,7 +208,7 @@ pub async fn upload<R: Runtime>(
     body.extend_from_slice(format!("--{boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n{{\"name\":{},\"parents\":[\"{FOLDER_ID}\"]}}\r\n--{boundary}\r\nContent-Type: {mime}\r\n\r\n",serde_json::to_string(filename).unwrap()).as_bytes());
     body.extend_from_slice(&bytes);
     body.extend_from_slice(format!("\r\n--{boundary}--").as_bytes());
-    let client = reqwest::Client::new();
+    let client = client();
     let file:FileInfo=client.post("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink")
         .bearer_auth(&token).header("Content-Type",format!("multipart/related; boundary={boundary}"))
         .body(body).send().await.map_err(|e|e.to_string())?.error_for_status().map_err(|e|format!("Google Drive upload failed: {e}"))?.json().await.map_err(|e|e.to_string())?;
