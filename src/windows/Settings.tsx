@@ -529,7 +529,10 @@ export function Settings() {
             <option value="googleDrive">Google Drive</option>
           </select>
         </label>
-        <div className="row">
+        <div className="row" style={{ alignItems: "center", gap: "10px", margin: "6px 0" }}>
+          <span style={{ fontSize: "13px", fontWeight: 500, color: driveConnected ? "#34c759" : "#ff9500" }}>
+            {driveConnected ? "✓ Connected" : "○ Not authorized yet"}
+          </span>
           {driveConnected ? (
             <button type="button" className="ghost" disabled={driveBusy} onClick={async () => { setDriveBusy(true); try { await ipc.driveDisconnect(); setDriveConnected(false); flash({ kind: "ok", text: "Google Drive disconnected" }); } catch (e) { flash({ kind: "error", text: String(e) }); } finally { setDriveBusy(false); } }}>Disconnect Google Drive</button>
           ) : (
