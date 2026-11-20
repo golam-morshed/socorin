@@ -20,6 +20,24 @@ fn client() -> reqwest::Client {
     reqwest::Client::new()
 }
 
+fn get_client_id<R: Runtime>(app: &AppHandle<R>) -> String {
+    let custom = crate::settings::current(app).google_client_id;
+    if !custom.trim().is_empty() {
+        custom.trim().to_string()
+    } else {
+        CLIENT_ID.to_string()
+    }
+}
+
+fn get_client_secret<R: Runtime>(app: &AppHandle<R>) -> Option<String> {
+    let custom = crate::settings::current(app).google_client_secret;
+    if !custom.trim().is_empty() {
+        Some(custom.trim().to_string())
+    } else {
+        std::env::var("GOOGLE_CLIENT_SECRET").ok().filter(|s| !s.trim().is_empty())
+    }
+}
+
 fn entry<R: Runtime>(app: &AppHandle<R>) -> Result<keyring::Entry, String> {
     let service = format!("{}.google-drive", app.config().identifier);
     keyring::Entry::new(&service, "refresh-token").map_err(|e| e.to_string())
@@ -81,10 +99,12 @@ pub async fn drive_connect<R: Runtime>(app: AppHandle<R>) -> Result<(), String> 
         uuid::Uuid::new_v4().simple(),
         uuid::Uuid::new_v4().simple()
     );
+    let cid = get_client_id(&app);
+    let secret = get_client_secret(&app);
     let state = uuid::Uuid::new_v4().to_string();
     let mut auth = url::Url::parse("https://accounts.google.com/o/oauth2/v2/auth").unwrap();
     auth.query_pairs_mut()
-        .append_pair("client_id", CLIENT_ID)
+        .append_pair("client_id", &cid)
         .append_pair("redirect_uri", &redirect)
         .append_pair("response_type", "code")
         .append_pair("scope", SCOPE)
@@ -148,23 +168,29 @@ pub async fn drive_connect<R: Runtime>(app: AppHandle<R>) -> Result<(), String> 
     });
     tauri_plugin_opener::open_url(&auth_url, None::<&str>).map_err(|e| e.to_string())?;
     let code = callback.await.map_err(|e| e.to_string())??;
-    let response: Token = client()
+    let mut form: Vec<(&str, &str)> = vec![
+        ("client_id", &cid),
+        ("code", &code),
+        ("code_verifier", &verifier),
+        ("grant_type", "authorization_code"),
+        ("redirect_uri", &redirect),
+    ];
+    if let Some(sec) = &secret {
+        form.push(("client_secret", sec.as_str()));
+    }
+    let res = client()
         .post("https://oauth2.googleapis.com/token")
-        .form(&[
-            ("client_id", CLIENT_ID),
-            ("code", &code),
-            ("code_verifier", &verifier),
-            ("grant_type", "authorization_code"),
-            ("redirect_uri", &redirect),
-        ])
+        .form(&form)
         .send()
         .await
-        .map_err(|e| e.to_string())?
-        .error_for_status()
-        .map_err(|e| format!("Token exchange failed: {e}"))?
-        .json()
-        .await
         .map_err(|e| e.to_string())?;
+    let status = res.status();
+    let body = res.text().await.unwrap_or_default();
+    if !status.is_success() {
+        return Err(format!("Token exchange failed ({status}): {body}"));
+    }
+    let response: Token = serde_json::from_str(&body)
+        .map_err(|e| format!("Invalid token response: {e}"))?;
     let refresh=response.refresh_token.ok_or("Google did not provide a refresh token; disconnect Socorin in your Google Account settings and reconnect")?;
     entry(&app)?
         .set_password(&refresh)
@@ -177,21 +203,29 @@ async fn access_token<R: Runtime>(app: &AppHandle<R>) -> Result<String, String> 
     let refresh = entry(app)?
         .get_password()
         .map_err(|_| "Connect Google Drive in Socorin Settings first".to_string())?;
-    let t: Token = client()
+    let cid = get_client_id(app);
+    let secret = get_client_secret(app);
+    let mut form: Vec<(&str, &str)> = vec![
+        ("client_id", &cid),
+        ("refresh_token", &refresh),
+        ("grant_type", "refresh_token"),
+    ];
+    if let Some(sec) = &secret {
+        form.push(("client_secret", sec.as_str()));
+    }
+    let res = client()
         .post("https://oauth2.googleapis.com/token")
-        .form(&[
-            ("client_id", CLIENT_ID),
-            ("refresh_token", &refresh),
-            ("grant_type", "refresh_token"),
-        ])
+        .form(&form)
         .send()
         .await
-        .map_err(|e| e.to_string())?
-        .error_for_status()
-        .map_err(|e| format!("Google token refresh failed: {e}"))?
-        .json()
-        .await
         .map_err(|e| e.to_string())?;
+    let status = res.status();
+    let body = res.text().await.unwrap_or_default();
+    if !status.is_success() {
+        return Err(format!("Google token refresh failed ({status}): {body}"));
+    }
+    let t: Token = serde_json::from_str(&body)
+        .map_err(|e| format!("Invalid token response: {e}"))?;
     let _ = t.expires_in;
     Ok(t.access_token)
 }

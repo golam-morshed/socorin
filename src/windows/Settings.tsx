@@ -201,6 +201,8 @@ export function Settings() {
         autoUpdate,
         uploadServer,
         uploadDestination,
+        googleClientId,
+        googleClientSecret,
       } = settings;
       const saved = await ipc.updateSettings({
         hotkey,
@@ -220,6 +222,8 @@ export function Settings() {
         autoUpdate,
         uploadServer,
         uploadDestination,
+        googleClientId,
+        googleClientSecret,
       });
       setSettings(saved);
       setDirty(false);
@@ -579,6 +583,33 @@ export function Settings() {
           )}
         </div>
         <p className="hint">Google Drive uploads use OAuth with PKCE. Socorin stores the refresh token in macOS Keychain. Files are shared as anyone with the link can view, and remain in your Drive until you delete them there.</p>
+        <details style={{ margin: "10px 0", fontSize: "13px" }}>
+          <summary style={{ cursor: "pointer", color: "#98989d" }}>Custom Google OAuth Credentials (Optional)</summary>
+          <div style={{ marginTop: "10px", display: "flex", flexDirection: "column", gap: "8px" }}>
+            <label className="field">
+              <span>Client ID</span>
+              <input
+                value={settings.googleClientId || ""}
+                onChange={(e) => update({ googleClientId: e.target.value })}
+                placeholder="59686342197-…apps.googleusercontent.com"
+                spellCheck={false}
+              />
+            </label>
+            <label className="field">
+              <span>Client Secret</span>
+              <input
+                type="password"
+                value={settings.googleClientSecret || ""}
+                onChange={(e) => update({ googleClientSecret: e.target.value })}
+                placeholder="Required only if client is a Web Application"
+                spellCheck={false}
+              />
+            </label>
+            <p className="hint" style={{ marginTop: "2px" }}>
+              Leave blank to use the default client. If using a custom client created as a "Desktop app" in Google Cloud Console, no secret is needed. If created as a "Web application", provide its client secret here.
+            </p>
+          </div>
+        </details>
         <label className="field">
           <span>Socorin Cloud upload server</span>
           <input

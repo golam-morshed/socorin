@@ -12,31 +12,18 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 LSREGISTER="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
-SOURCE_BUNDLE="src-tauri/target/release/bundle/macos/Socorin Dev.app"
+# Hide target bundles from Spotlight & LaunchServices
+./scripts/spotlight-hide-bundles.sh
+
+SOURCE_BUNDLE="src-tauri/target/release/bundle/macos.noindex/Socorin Dev.app"
 if [ ! -d "$SOURCE_BUNDLE" ]; then
-  SOURCE_BUNDLE="src-tauri/target/release/bundle/macos.noindex/Socorin Dev.app"
+  SOURCE_BUNDLE="src-tauri/target/release/bundle/macos/Socorin Dev.app"
 fi
 
 if [ ! -d "$SOURCE_BUNDLE" ]; then
   echo "Error: Release bundle not found. Run a build first." >&2
   exit 1
 fi
-
-echo "Stopping running Socorin Dev instances..."
-pkill -f "Socorin Dev.app" 2>/dev/null || true
-pkill -f "/Contents/MacOS/socorin" 2>/dev/null || true
-
-# Remove duplicate in user Applications if present
-if [ -d "$HOME/Applications/Socorin Dev.app" ]; then
-  echo "Removing duplicate instance from $HOME/Applications/Socorin Dev.app..."
-  if [ -x "$LSREGISTER" ]; then
-    "$LSREGISTER" -u "$HOME/Applications/Socorin Dev.app" 2>/dev/null || true
-  fi
-  rm -rf "$HOME/Applications/Socorin Dev.app"
-fi
-
-# Hide target bundles from Spotlight & LaunchServices
-./scripts/spotlight-hide-bundles.sh
 
 # Install cleanly to /Applications
 DEST="/Applications/Socorin Dev.app"

@@ -31,6 +31,8 @@ let settings = {
   uploadServer: "https://socorin.com",
   installId: "mockInstallId0123456789",
   uploadDestination: "socorinCloud",
+  googleClientId: "",
+  googleClientSecret: "",
 };
 
 // `?mock=share&state=failed` shows the popover's failure look.

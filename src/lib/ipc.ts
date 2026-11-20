@@ -120,6 +120,8 @@ export interface Settings {
   /** Where "Upload & copy link" sends captures: an http(s) origin, socorin.com by default. */
   uploadServer: string;
   uploadDestination: "socorinCloud" | "googleDrive";
+  googleClientId?: string;
+  googleClientSecret?: string;
   /** The random id the share server gave this install ("" until the first upload). */
   installId: string;
 }

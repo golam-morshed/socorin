@@ -95,6 +95,10 @@ pub struct Settings {
     pub install_id: String,
     /// Where manual and automatic uploads go. Cloud remains the default.
     pub upload_destination: UploadDestination,
+    /// Optional custom Google OAuth Client ID.
+    pub google_client_id: String,
+    /// Optional custom Google OAuth Client Secret.
+    pub google_client_secret: String,
 }
 
 impl Default for Settings {
@@ -124,6 +128,8 @@ impl Default for Settings {
             upload_server: DEFAULT_UPLOAD_SERVER.into(),
             install_id: String::new(),
             upload_destination: UploadDestination::SocorinCloud,
+            google_client_id: String::new(),
+            google_client_secret: String::new(),
         }
     }
 }
