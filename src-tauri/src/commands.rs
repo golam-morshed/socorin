@@ -30,10 +30,15 @@ pub struct PlatformInfo {
     /// macOS: "disk-image" / "translocated" when this copy of the app cannot
     /// be granted permissions (see `macos::install_issue`).
     pub install_issue: Option<&'static str>,
+    pub bundle_id: String,
 }
 
 #[tauri::command]
-pub fn platform_info() -> PlatformInfo {
+pub fn platform_info<R: Runtime>(app: AppHandle<R>) -> PlatformInfo {
+    platform_info_for(app.config().identifier.clone())
+}
+
+pub fn platform_info_for(bundle_id: String) -> PlatformInfo {
     PlatformInfo {
         os: std::env::consts::OS,
         #[cfg(target_os = "macos")]
@@ -52,19 +57,41 @@ pub fn platform_info() -> PlatformInfo {
         install_issue: crate::macos::install_issue(),
         #[cfg(not(target_os = "macos"))]
         install_issue: None,
+        bundle_id,
     }
 }
 
 #[tauri::command]
-pub fn request_screen_permission() -> bool {
+pub fn request_screen_permission<R: Runtime>(app: AppHandle<R>) -> bool {
     #[cfg(target_os = "macos")]
     {
+        crate::macos::activate_app(&app);
         crate::macos::request_screen_permission()
     }
     #[cfg(not(target_os = "macos"))]
     {
+        let _ = app;
         true
     }
+}
+
+#[tauri::command]
+pub fn request_mic_permission<R: Runtime>(app: AppHandle<R>) -> &'static str {
+    #[cfg(target_os = "macos")]
+    {
+        crate::macos::activate_app(&app);
+        crate::macos::request_mic_permission(std::time::Duration::from_secs(30)).as_str()
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = app;
+        "granted"
+    }
+}
+
+#[tauri::command]
+pub fn relaunch_app<R: Runtime>(app: AppHandle<R>) {
+    app.restart();
 }
 
 #[tauri::command]
@@ -676,8 +703,9 @@ mod tests {
 
     #[test]
     fn platform_info_describes_this_machine() {
-        let info = platform_info();
+        let info = platform_info_for("com.socorin".into());
         assert_eq!(info.os, std::env::consts::OS);
+        assert_eq!(info.bundle_id, "com.socorin");
         assert!(!info.wayland);
         assert_eq!(info.install_issue, None);
         let json = serde_json::to_value(&info).unwrap();
@@ -1047,7 +1075,8 @@ mod tests {
         if cfg!(target_os = "macos") {
             true
         } else {
-            request_screen_permission()
+            let app = app_with(settings_in(&temp_dir("cmd-perm")));
+            request_screen_permission(app.handle().clone())
         }
     }
 }

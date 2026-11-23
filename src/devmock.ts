@@ -163,12 +163,15 @@ const handlers: Record<string, Handler> = {
       micPermission: q.get("mic") ?? "granted",
       wayland: false,
       installIssue: q.get("issue") ?? null,
+      bundleId: "com.socorin.dev",
     };
   },
   audio_inputs: async () => [
     { id: "BuiltInMicrophoneDevice", name: "MacBook Pro Microphone", default: true },
     { id: "AppleUSBAudioEngine:Jabra:2", name: "Jabra Speak 710", default: false },
   ],
+  request_mic_permission: async () => "granted",
+  relaunch_app: async () => console.log("[mock] relaunch_app"),
   open_mic_permission_settings: async () => console.log("[mock] open_mic_permission_settings"),
   get_settings: async () => settings,
   update_settings: async (args) => {

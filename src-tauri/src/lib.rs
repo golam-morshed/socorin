@@ -135,6 +135,8 @@ pub(crate) fn configure<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tauri:
             commands::open_save_dir,
             commands::open_screen_permission_settings,
             commands::open_mic_permission_settings,
+            commands::request_mic_permission,
+            commands::relaunch_app,
             commands::audio_inputs,
             commands::start_record_region,
             commands::start_record_fullscreen,

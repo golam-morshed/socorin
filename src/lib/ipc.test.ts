@@ -17,6 +17,8 @@ describe("ipc", () => {
       [() => ipc.debugLog("hi"), "debug_log", { message: "hi" }],
       [ipc.platformInfo, "platform_info"],
       [ipc.requestScreenPermission, "request_screen_permission"],
+      [ipc.requestMicPermission, "request_mic_permission"],
+      [ipc.relaunchApp, "relaunch_app"],
       [ipc.openScreenPermissionSettings, "open_screen_permission_settings"],
       [ipc.startCapture, "start_capture"],
       [ipc.startFullscreenCapture, "start_fullscreen_capture"],

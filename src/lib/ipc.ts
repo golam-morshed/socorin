@@ -220,6 +220,7 @@ export interface PlatformInfo {
   wayland: boolean;
   /** macOS: "disk-image" | "translocated" when this copy cannot be granted permissions. */
   installIssue: "disk-image" | "translocated" | null;
+  bundleId?: string;
 }
 
 export interface DebugOptions {
@@ -238,6 +239,8 @@ export const ipc = {
   debugLog: (message: string) => invoke<void>("debug_log", { message }),
   platformInfo: () => invoke<PlatformInfo>("platform_info"),
   requestScreenPermission: () => invoke<boolean>("request_screen_permission"),
+  requestMicPermission: () => invoke<string>("request_mic_permission"),
+  relaunchApp: () => invoke<void>("relaunch_app"),
   openScreenPermissionSettings: () => invoke<void>("open_screen_permission_settings"),
   /** macOS: Privacy & Security → Microphone. */
   openMicPermissionSettings: () => invoke<void>("open_mic_permission_settings"),

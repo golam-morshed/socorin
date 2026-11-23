@@ -337,13 +337,13 @@ export function Settings() {
           <h2>Screen Recording permission</h2>
           <p>
             macOS requires permission before an app can capture the screen. Grant it under
-            System Settings → Privacy &amp; Security → Screen Recording, then relaunch if needed.
+            System Settings → Privacy &amp; Security → Screen &amp; System Audio Recording, then relaunch Socorin.
           </p>
           <p className="hint">
             Socorin missing from that list, or the switch is on but capturing still fails (typical after an
             update)? Reset the stale entry in Terminal, then relaunch and press Request access again:
             <br />
-            <code>tccutil reset ScreenCapture com.socorin</code>
+            <code>tccutil reset ScreenCapture {platform?.bundleId || "com.socorin.dev"}</code>
           </p>
           <div className="row">
             <button type="button" onClick={() => ipc.requestScreenPermission().then(refreshPlatform)}>
@@ -351,6 +351,9 @@ export function Settings() {
             </button>
             <button type="button" className="secondary" onClick={() => ipc.openScreenPermissionSettings()}>
               Open System Settings
+            </button>
+            <button type="button" className="secondary" onClick={() => ipc.relaunchApp()}>
+              Relaunch Socorin
             </button>
           </div>
         </section>
@@ -473,7 +476,30 @@ export function Settings() {
             </select>
           </label>
           {settings.mic && mics.length === 0 && <p className="hint">No microphone is connected; recordings have no sound until one is.</p>}
-          {micDenied && (
+          {platform.os === "macos" && platform?.micPermission !== "granted" ? (
+            <div className="hint warning-text" style={{ marginTop: 8 }}>
+              <p>
+                {platform?.micPermission === "denied"
+                  ? "Microphone access is off for Socorin, so recordings have no sound. Allow it under System Settings → Privacy & Security → Microphone."
+                  : "Microphone access has not been granted yet."}
+              </p>
+              <div className="row" style={{ marginTop: 6, gap: 8 }}>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => ipc.requestMicPermission().then(() => { refreshPlatform(); refreshMics(); })}
+                >
+                  Request microphone access
+                </button>
+                <button type="button" className="ghost" onClick={() => ipc.openMicPermissionSettings()}>
+                  Open System Settings
+                </button>
+              </div>
+              <p className="hint" style={{ marginTop: 6 }}>
+                If stuck, reset in Terminal: <code>tccutil reset Microphone {platform?.bundleId || "com.socorin.dev"}</code>
+              </p>
+            </div>
+          ) : micDenied ? (
             <p className="hint warning-text">
               Microphone access is off for Socorin, so recordings have no sound. Allow it under System Settings → Privacy
               &amp; Security → Microphone.{" "}
@@ -481,7 +507,7 @@ export function Settings() {
                 Open System Settings
               </button>
             </p>
-          )}
+          ) : null}
           <p className="hint">
             The Record bar has a microphone button, so the sound can be switched off (or on) for the next take without
             coming here.{" "}

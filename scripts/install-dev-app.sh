@@ -5,14 +5,22 @@
 # 3. Unregisters stale paths from macOS LaunchServices.
 # 4. Hides build artifacts from Spotlight.
 # 5. Copies the release bundle cleanly to /Applications/Socorin Dev.app.
-# 6. Signs and registers the single bundle with LaunchServices.
+# 6. Signs with entitlements and registers the single bundle with LaunchServices.
 # 7. Launches /Applications/Socorin Dev.app.
 
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# 1. Quit running instances
+pkill -f "/Applications/Socorin Dev.app/Contents/MacOS/socorin" 2>/dev/null || true
+pkill -f "Socorin Dev.app" 2>/dev/null || true
+sleep 1
+
+# 2. Remove duplicate instances from ~/Applications
+rm -rf "$HOME/Applications/Socorin Dev.app" "$HOME/Applications/Socorin.app"
+
 LSREGISTER="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
-# Hide target bundles from Spotlight & LaunchServices
+# 3. Hide target bundles from Spotlight & LaunchServices
 ./scripts/spotlight-hide-bundles.sh
 
 SOURCE_BUNDLE="src-tauri/target/release/bundle/macos.noindex/Socorin Dev.app"
@@ -25,7 +33,7 @@ if [ ! -d "$SOURCE_BUNDLE" ]; then
   exit 1
 fi
 
-# Install cleanly to /Applications
+# 4. Install cleanly to /Applications
 DEST="/Applications/Socorin Dev.app"
 echo "Installing to $DEST..."
 if [ -d "$DEST" ]; then
@@ -36,7 +44,14 @@ if [ -d "$DEST" ]; then
 fi
 
 cp -R "$SOURCE_BUNDLE" "$DEST"
-codesign --force --deep --sign - "$DEST"
+
+# 5. Sign with entitlements
+ENTITLEMENTS_FLAG=()
+if [ -f "src-tauri/Entitlements.plist" ]; then
+  ENTITLEMENTS_FLAG=(--entitlements "src-tauri/Entitlements.plist")
+fi
+
+codesign --force --deep --sign - "${ENTITLEMENTS_FLAG[@]}" "$DEST"
 
 if [ -x "$LSREGISTER" ]; then
   "$LSREGISTER" -f "$DEST"

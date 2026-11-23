@@ -70,6 +70,7 @@ describe("devmock", () => {
       micPermission: "granted",
       wayland: false,
       installIssue: null,
+      bundleId: "com.socorin.dev",
     });
     window.history.replaceState({}, "", "/?mock=main&noperm=1&issue=disk-image&mic=denied");
     expect(await internals().invoke("platform_info")).toMatchObject({ screenPermission: false, installIssue: "disk-image", micPermission: "denied" });
