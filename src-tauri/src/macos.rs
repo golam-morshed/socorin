@@ -38,6 +38,29 @@ extern "C" {
     fn CGRequestScreenCaptureAccess() -> bool;
     fn CGMainDisplayID() -> u32;
     fn CGDisplayBounds(display: u32) -> CGRect;
+    fn CGWindowListCreateImage(
+        screen_bounds: CGRect,
+        list_option: u32,
+        window_id: u32,
+        image_option: u32,
+    ) -> *mut std::ffi::c_void;
+    fn CGImageRelease(image: *mut std::ffi::c_void);
+}
+
+pub fn can_capture_screen() -> bool {
+    let main = unsafe { CGDisplayBounds(CGMainDisplayID()) };
+    let rect = CGRect {
+        origin: main.origin,
+        size: CGSize { width: 1.0, height: 1.0 },
+    };
+    // kCGWindowListOptionOnScreenOnly = 1
+    let img = unsafe { CGWindowListCreateImage(rect, 1, 0, 0) };
+    if img.is_null() {
+        false
+    } else {
+        unsafe { CGImageRelease(img) };
+        true
+    }
 }
 
 /// Mouse position in global logical points with a top-left origin (the same
@@ -111,11 +134,20 @@ pub fn install_issue_message(issue: &str) -> String {
 }
 
 pub fn has_screen_permission() -> bool {
-    unsafe { CGPreflightScreenCaptureAccess() }
+    if unsafe { CGPreflightScreenCaptureAccess() } {
+        return true;
+    }
+    // On macOS 15+ (Sequoia), CGPreflightScreenCaptureAccess() frequently returns false
+    // for ad-hoc / local developer builds even when permission is enabled in System Settings.
+    // Verify whether actual screen capture is functional:
+    can_capture_screen()
 }
 
 /// Shows the system prompt (first time only) and returns whether access is granted.
 pub fn request_screen_permission() -> bool {
+    if has_screen_permission() {
+        return true;
+    }
     unsafe { CGRequestScreenCaptureAccess() }
 }
 
@@ -332,6 +364,7 @@ mod more_tests {
 
     #[test]
     fn permission_preflight_and_cursor_do_not_need_the_permission() {
+        assert!(can_capture_screen() || !can_capture_screen()); // must not panic
         // Whatever the answer, asking must not prompt or panic.
         let _ = has_screen_permission();
         if let Some((x, y)) = cursor_logical() {
